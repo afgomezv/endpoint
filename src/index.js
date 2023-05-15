@@ -1,7 +1,10 @@
 const express = require("express");
 const { getLdapClient } = require("./ladp");
+const { authenticateUser } = require("./auth");
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 //* Endpoint de prueba
 app.get("/", (req, res) => {
@@ -11,6 +14,7 @@ app.get("/", (req, res) => {
   res.send("Se conecto directorio activo exitoso!");
 });
 
+//* Endpoint buscador de usuarios
 app.get("/users/:username", (req, res) => {
   const username = req.params.username;
   const ldapClient = getLdapClient();
@@ -30,32 +34,28 @@ app.get("/users/:username", (req, res) => {
       }
 
       let users = [];
-      let hasResults = false; // Variable de bandera
+      let hasResults = false; //? Variable de bandera
 
+      //* Para cada entrada que coincida con el filtro, se ejecutará esta función
       searchRes.on("searchEntry", (entry) => {
-        //* Para cada entrada que coincida con el filtro,
-        //* se ejecutará esta función
         users.push(entry.pojo);
-        hasResults = true; // Se establece la bandera en verdadero
+        hasResults = true; //? Se establece la bandera en verdadero
         //console.log("Entrada encontrada:", entry.json);
       });
 
+      //* Si se reciben referencias de búsqueda, se puede agregar una lógica adicional aquí si es necesario
       searchRes.on("searchReference", (referral) => {
-        //* Si se reciben referencias de búsqueda, se puede
-        //* agregar una lógica adicional aquí si es necesario
         console.log("Referencia de búsqueda: " + referral.uris.join());
       });
 
+      //* Si ocurre un error durante la búsqueda, se ejecutará esta función
       searchRes.on("error", (err) => {
-        //* Si ocurre un error durante la búsqueda,
-        //* se ejecutará esta función
         console.error(err);
         res.status(500).send("Error en la búsqueda: " + err.message);
       });
 
+      //* Cuando se haya completado la búsqueda, se ejecutará esta función con todos los resultados encontrados
       searchRes.on("end", (result) => {
-        //* Cuando se haya completado la búsqueda, se ejecutará
-        //* esta función con todos los resultados encontrados
         if (result.status === 0) {
           ldapClient.unbind();
 
@@ -73,6 +73,25 @@ app.get("/users/:username", (req, res) => {
       });
     }
   );
+});
+
+//* Endpoint para autenticar usuarios en el Directorio Activo
+app.post("/authenticate", (req, res) => {
+  const { username, password } = req.body;
+
+  authenticateUser(username, password, (err, authenticated) => {
+    if (err) {
+      //* Ocurrió un error en la autenticación
+      console.error(err);
+      res.status(500).send("Error en la autenticación");
+    } else if (!authenticated) {
+      //* Las credenciales son inválidas
+      res.status(401).send("Credenciales inválidas");
+    } else {
+      //* Autenticación exitosa
+      res.send("Autenticación exitosa");
+    }
+  });
 });
 
 app.listen(4000, () => {
