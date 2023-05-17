@@ -1,6 +1,5 @@
 const express = require("express");
 const { getLdapClient } = require("./ladp");
-const { authenticateUser } = require("./auth");
 
 const app = express();
 app.use(express.json());
