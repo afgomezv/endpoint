@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-//* Endpoint de prueba
+//* Endpoint: verifica la conexion al directorio activo
 app.get("/", (req, res) => {
   const ldapClient = getLdapClient();
   //! Hacer algo con el cliente LDAP...
@@ -13,8 +13,8 @@ app.get("/", (req, res) => {
   res.send("Se conecto directorio activo exitoso!");
 });
 
-//* Endpoint: buscador de usuarios
-app.get("/users/:username", (req, res) => {
+//* Endpoint: buscador de usuarios del directorio activo
+app.get("/:username", (req, res) => {
   const username = req.params.username;
 
   const ldapClient = getLdapClient();
@@ -76,7 +76,7 @@ app.get("/users/:username", (req, res) => {
 });
 
 //*Endpoint: Autenticar usuarios del directorio activo
-app.post("/authenticate", (req, res) => {
+app.post("/auth", (req, res) => {
   const { username, password } = req.body;
   const ldapClient = getLdapClient();
 
@@ -113,14 +113,14 @@ app.post("/authenticate", (req, res) => {
           });
         });
 
+        //* Error en la búsqueda del usuario
         searchRes.on("error", (error) => {
-          //* Error en la búsqueda del usuario
           res.status(500).send("Error en la búsqueda del usuario");
         });
 
+        //* No se encontró ningún usuario en el directorio activo
         searchRes.on("end", () => {
           if (!userFound) {
-            //* No se encontró ningún usuario en el directorio activo
             res.status(404).send("Usuario no encontrado");
           }
         });
