@@ -14,9 +14,10 @@ app.get("/", (req, res) => {
   res.send("Se conecto directorio activo exitoso!");
 });
 
-//* Endpoint buscador de usuarios
+//* Endpoint: buscador de usuarios
 app.get("/users/:username", (req, res) => {
   const username = req.params.username;
+
   const ldapClient = getLdapClient();
 
   const opts = {
@@ -40,7 +41,7 @@ app.get("/users/:username", (req, res) => {
       searchRes.on("searchEntry", (entry) => {
         users.push(entry.pojo);
         hasResults = true; //? Se establece la bandera en verdadero
-        //console.log("Entrada encontrada:", entry.json);
+        //console.log("Entrada encontrada:", entry.pojo);
       });
 
       //* Si se reciben referencias de búsqueda, se puede agregar una lógica adicional aquí si es necesario
@@ -75,23 +76,58 @@ app.get("/users/:username", (req, res) => {
   );
 });
 
-//* Endpoint para autenticar usuarios en el Directorio Activo
+//*Endpoint: Autenticar usuarios del directorio activo
 app.post("/authenticate", (req, res) => {
   const { username, password } = req.body;
+  const ldapClient = getLdapClient();
 
-  authenticateUser(username, password, (err, authenticated) => {
-    if (err) {
-      //* Ocurrió un error en la autenticación
-      console.error(err);
-      res.status(500).send("Error en la autenticación");
-    } else if (!authenticated) {
-      //* Las credenciales son inválidas
-      res.status(401).send("Credenciales inválidas");
-    } else {
-      //* Autenticación exitosa
-      res.send("Autenticación exitosa");
+  const opts = {
+    filter: `(samAccountName=${username})`,
+    scope: "sub",
+  };
+
+  ldapClient.search(
+    "OU=Usuarios,OU=INDER,DC=inder,DC=gov,DC=local",
+    opts,
+    (err, searchRes) => {
+      if (err) {
+        //* Error al realizar la búsqueda
+        res.status(500).send("Error en la búsqueda del usuario");
+      } else {
+        let userFound = false;
+
+        searchRes.on("searchEntry", (entry) => {
+          //* Se encontró un usuario en el directorio activo
+          userFound = true;
+          const userDn = entry.dn.toString();
+          //console.log(userDn);
+
+          //* Autenticar al usuario utilizando su contraseña
+          ldapClient.bind(userDn, password, (bindErr) => {
+            if (bindErr) {
+              //* La autenticación ha fallado
+              res.status(401).send("Credenciales inválidas");
+            } else {
+              //* La autenticación ha sido exitosa
+              res.send("Autenticación exitosa");
+            }
+          });
+        });
+
+        searchRes.on("error", (error) => {
+          //* Error en la búsqueda del usuario
+          res.status(500).send("Error en la búsqueda del usuario");
+        });
+
+        searchRes.on("end", () => {
+          if (!userFound) {
+            //* No se encontró ningún usuario en el directorio activo
+            res.status(404).send("Usuario no encontrado");
+          }
+        });
+      }
     }
-  });
+  );
 });
 
 app.listen(4000, () => {
