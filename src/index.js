@@ -1,6 +1,8 @@
 const express = require("express");
 const { getLdapClient } = require("./ladp");
 
+const PORT = process.env.PORT;
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -38,9 +40,9 @@ app.get("/:username", (req, res) => {
 
       //* Para cada entrada que coincida con el filtro, se ejecutará esta función
       searchRes.on("searchEntry", (entry) => {
-        users.push(entry.pojo);
+        users.push(entry.pojo.attributes);
         hasResults = true; //? Se establece la bandera en verdadero
-        //console.log("Entrada encontrada:", entry.pojo);
+        //console.log("Entrada encontrada:", entry.pojo.attributes);
       });
 
       //* Si se reciben referencias de búsqueda, se puede agregar una lógica adicional aquí si es necesario
@@ -130,5 +132,5 @@ app.post("/auth", (req, res) => {
 });
 
 app.listen(4000, () => {
-  console.log("server en port 4000");
+  console.log(`server en port ${PORT}`);
 });
