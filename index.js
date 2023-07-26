@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-//* Endpoint: verifica la conexion al directorio activo
+//! Endpoint: verifica la conexion al directorio activo
 app.get("/", (req, res) => {
   const ldapClient = getLdapClient();
   //! Hacer algo con el cliente LDAP...
@@ -77,7 +77,7 @@ app.get("/", (req, res) => {
 //   );
 // });
 
-//*Endpoint: Autenticar usuarios del directorio activo
+//!Endpoint: Autenticar usuarios del directorio activo
 app.post("/auth", (req, res) => {
   const { username, password } = req.body;
   const ldapClient = getLdapClient();
